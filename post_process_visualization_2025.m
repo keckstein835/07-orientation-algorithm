@@ -10,9 +10,6 @@
 %     output_filename = 'FFTO3D_20240207scaled.mat';
 % end
 %ONLINE EDITED VERSION FROM GITHUB
-
-%SECOND EDITING ONLINE, NOW CHECK ON DESKTOP TO SEE IF THIS UPDATES
-
 %% User settings:
 
     % output_filename = 'FFTO3D_20240207scaled.mat';
