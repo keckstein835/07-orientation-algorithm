@@ -1,0 +1,77 @@
+function main_3d_grid_distribution()
+    % Generate a 3D grid of points with some noise
+    rng(42);
+    
+    % Create a grid of points in 3D space
+    grid_range = linspace(-10, 10, 10);  % Grid from -10 to 10 with 10 points per axis
+    [grid_x, grid_y, grid_z] = meshgrid(grid_range, grid_range, grid_range);
+    points = [grid_x(:), grid_y(:), grid_z(:)];  % Create a 3D grid of points
+    
+    % Add uniform noise to the grid points
+    noise_scale = 0.1;
+    points = points + rand(size(points)) * 2 * noise_scale - noise_scale;
+    
+    % Fit three orthogonal lines to the points
+    lines = fit_orthogonal_lines_enforced(points);
+    
+    % Plot the points and the fitted orthogonal lines
+    plot_orthogonal_lines(points, lines);
+end
+
+function [line_dir, point_on_line, inliers] = fit_line_ransac(points)
+    % Fits a line to a set of 3D points using RANSAC.
+    [~, ~, V] = svd(points);  % Singular value decomposition
+    line_dir = V(:, 1);  % Direction of the line (first right singular vector)
+    point_on_line = mean(points, 1);  % Mean of the points as a point on the line
+    
+    % Find inliers: calculate residuals and apply a threshold
+    residuals = vecnorm(points - point_on_line, 2, 2);
+    threshold = 0.1;
+    inliers = residuals < threshold;
+end
+
+function lines = fit_orthogonal_lines_enforced(points)
+    % Step 1: Fit the first line using RANSAC
+    [line1_dir, point1, inliers1] = fit_line_ransac(points);
+    
+    % Step 2: Remove inliers of the first line
+    remaining_points = points(~inliers1, :);
+    
+    % Step 3: Fit the second line and enforce orthogonality
+    [line2_dir, point2, inliers2] = fit_line_ransac(remaining_points);
+    line2_dir = line2_dir - dot(line2_dir, line1_dir) * line1_dir;  % Project to be orthogonal
+    line2_dir = line2_dir / norm(line2_dir);  % Normalize
+    
+    % Step 4: Remove inliers of the second line
+    remaining_points = remaining_points(~inliers2, :);
+    
+    % Step 5: Fit the third line and enforce orthogonality with both previous lines
+    [line3_dir, point3, inliers3] = fit_line_ransac(remaining_points);
+    line3_dir = line3_dir - dot(line3_dir, line1_dir) * line1_dir;
+    line3_dir = line3_dir - dot(line3_dir, line2_dir) * line2_dir;  % Project to be orthogonal to both
+    line3_dir = line3_dir / norm(line3_dir);  % Normalize
+    
+    % Output the three fitted lines
+    lines = {line1_dir, point1; line2_dir, point2; line3_dir, point3};
+end
+
+function plot_orthogonal_lines(points, lines)
+    figure;
+    hold on;
+    scatter3(points(:, 1), points(:, 2), points(:, 3), 'b', 'filled');
+    
+    % Plot the three orthogonal lines
+    for i = 1:3
+        line_dir = lines{i, 1};
+        point_on_line = lines{i, 2};
+        line_points = [point_on_line - 5 * line_dir'; point_on_line + 5 * line_dir'];
+        plot3(line_points(:, 1), line_points(:, 2), line_points(:, 3), 'LineWidth', 2);
+    end
+    
+    xlabel('X');
+    ylabel('Y');
+    zlabel('Z');
+    grid on;
+    legend('Data points', 'Line 1', 'Line 2', 'Line 3');
+    hold off;
+end
