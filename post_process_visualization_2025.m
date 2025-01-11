@@ -25,6 +25,8 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     output_filename = 'FFTO3D_20241122xboxAgar.mat';
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
+    output_filename = 'FFTO3D_TPUagar20241214';
+    % output_filename = 'test';
     
     fraction = 6; % Sample every n-th point for the quiver plot
 
@@ -166,6 +168,21 @@ quiver(yGrid_YZ, zGrid_YZ, squeeze(V_downsampled_smooth(midplane_YZ, 1:fraction:
 hold off;
 % Make pixels square by adjusting the aspect ratio
 daspect([1 1 1]);
+
+% 3D Quiver plot of the downsampled and smoothed vector field
+figure;
+[xGrid3D, yGrid3D, zGrid3D] = meshgrid(1:fraction:size(V_downsampled_smooth, 1), 1:fraction:size(V_downsampled_smooth, 2), 1:fraction:size(V_downsampled_smooth, 3));
+quiver3(xGrid3D, yGrid3D, zGrid3D, ...
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 1), ...
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 2), ...
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 3), ...
+    'r');
+title('3D Quiver Plot of Downsampled and Smoothed Vector Field');
+xlabel('X');
+ylabel('Y');
+zlabel('Z');
+axis equal;
+grid on;
 
 
 %% Save the variables V_orientation_all_smooth and FA_all to a file named "DTI.mat"
