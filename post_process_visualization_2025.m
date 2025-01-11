@@ -10,8 +10,7 @@
 %     output_filename = 'FFTO3D_20240207scaled.mat';
 % end
 
-% As of 2025-1-10, I saved this code under the source "online_2"; I will pull that to main code to https://github.com/keckstein835/07-orientation-algorithm.git
-% Following that, I will delete all branches online; and all branches on my local machine except for main. Then I will create a new online branch called "2025_1.1" from which local code will be sourced from
+% Now working in 2025_working; whew it feels good to have that all done!
 
 % 
 disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
@@ -25,10 +24,10 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     output_filename = 'FFTO3D_20241122xboxAgar.mat';
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
-    output_filename = 'FFTO3D_TPUagar20241214';
+    % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'test';
     
-    fraction = 6; % Sample every n-th point for the quiver plot
+    fraction = 4; % Sample every n-th point for the quiver plot
 
 
 %% Load the data from the output file
@@ -169,15 +168,19 @@ hold off;
 % Make pixels square by adjusting the aspect ratio
 daspect([1 1 1]);
 
-% 3D Quiver plot of the downsampled and smoothed vector field
+% 3D Quiver plot of the downsampled and smoothed vector field (middle 1/4)
 figure;
-[xGrid3D, yGrid3D, zGrid3D] = meshgrid(1:fraction:size(V_downsampled_smooth, 1), 1:fraction:size(V_downsampled_smooth, 2), 1:fraction:size(V_downsampled_smooth, 3));
+
+% Define the range for the middle 1/4 in the z-direction only
+zRange = round(size(V_downsampled_smooth, 3) / 4):round(3 * size(V_downsampled_smooth, 3) / 4);
+
+[xGrid3D, yGrid3D, zGrid3D] = meshgrid(1:fraction:size(V_downsampled_smooth, 1), 1:fraction:size(V_downsampled_smooth, 2), zRange(1):fraction:zRange(end));
 quiver3(xGrid3D, yGrid3D, zGrid3D, ...
-    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 1), ...
-    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 2), ...
-    V_downsampled_smooth(1:fraction:end, 1:fraction:end, 1:fraction:end, 3), ...
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 2), ...% x and y are intentionally flipped here (it's just the way it is with quiver plots here)
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 1), ...
+    V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 3), ...
     'r');
-title('3D Quiver Plot of Downsampled and Smoothed Vector Field');
+title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/4 in Z)');
 xlabel('X');
 ylabel('Y');
 zlabel('Z');
