@@ -21,8 +21,8 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     % output_filename = 'FFTO3D 20241228xbox.mat';
     % output_filename = 'FFTO3D_20231227_DD.mat';
     % output_filename = 'FFTO3D_20241122_agar_XBOX.mat';
-    output_filename = 'FFTO3D_20241122xboxAgar.mat';
-    % output_filename = 'FFTO3D_20241214supersoft.mat';
+    % output_filename = 'FFTO3D_20241122xboxAgar.mat';
+    output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'test';
@@ -181,8 +181,8 @@ quiver3(xGrid3D, yGrid3D, zGrid3D, ...
     V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 3), ...
     'r');
 title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/4 in Z)');
-xlabel('X');
-ylabel('Y');
+xlabel('Y');
+ylabel('X');
 zlabel('Z');
 axis equal;
 grid on;
@@ -192,12 +192,12 @@ grid on;
 V1 = V_downsampled;
 FA = FA_downsampled;
 
-% Flip indices 1 and 2 of V1 and FA to match the NLI convention
-V1 = permute(V1, [2, 1, 3, 4]);
-FA = permute(FA, [2, 1, 3]);
+% Flip indices 1 and 2 of V1 and FA to match the NLI convention (if desired -- not sure if that's correct. KNE 2025-1-16)
+% V1 = permute(V1, [2, 1, 3, 4]);
+% FA = permute(FA, [2, 1, 3]);
 
-% Swap the 1st and 2nd entries in the 4th dimension of V1
-V1 = V1(:,:,:,[2,1,3]);
+% Swap the 1st and 2nd entries in the 4th dimension of V1 (i.e. orientation vector)  (if desired -- not sure if that's correct. KNE 2025-1-16)  
+    % V1 = V1(:,:,:,[2,1,3]);
 
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
