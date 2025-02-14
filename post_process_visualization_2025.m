@@ -18,16 +18,17 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
 %% User settings:
 
     % output_filename = 'FFTO3D_20240207scaled.mat';
-    % output_filename = 'FFTO3D 20241228xbox.mat';
+    % output_filename = 'FFTO3D_20250204_arch.mat';
     % output_filename = 'FFTO3D_20231227_DD.mat';
     % output_filename = 'FFTO3D_20241122_agar_XBOX.mat';
     % output_filename = 'FFTO3D_20241122xboxAgar.mat';
-    output_filename = 'FFTO3D_20241214supersoft.mat';
+    % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
+    output_filename = 'FFTO3D_20240204_arch_multilat.mat';
     % output_filename = 'test';
     
-    fraction = 4; % Sample every n-th point for the quiver plot
+    fraction = 3; % Sample every n-th point for the quiver plot
 
 
 %% Load the data from the output file
@@ -198,6 +199,8 @@ FA = FA_downsampled;
 
 % Swap the 1st and 2nd entries in the 4th dimension of V1 (i.e. orientation vector)  (if desired -- not sure if that's correct. KNE 2025-1-16)  
     % V1 = V1(:,:,:,[2,1,3]);
+
+% as of 2025-2-6, I don't think these flips (above ~6 lines) are necessary so DONT do them.
 
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
