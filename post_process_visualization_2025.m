@@ -25,10 +25,13 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
-    output_filename = 'FFTO3D_20240204_arch_multilat.mat';
+    % output_filename = 'FFTO3D_20240204_arch_multilat.mat';
+    % output_filename = 'FFTO3D_archMultiLat_28mmNH.mat';
+    output_filename = 'FFTO3D_output_FA_test2';
     % output_filename = 'test';
     
-    fraction = 3; % Sample every n-th point for the quiver plot
+    fraction = 6; % Sample every n-th point for the quiver plot
+    downsample_factor = 2; % Downsample factor for the imageStack and orientation vectors (going from your anatomical images, e.g. 120 x 120 x 72, to MRE images, 60 x 60 x 36 -KNE 2025-2-18)
 
 
 %% Load the data from the output file
@@ -58,8 +61,8 @@ end
 
 
 %% Get rid of FA_all because FA is not meaningful enough to be useful; set to for numbers that are not NaN
-FA_all(isnan(FA_all)) = 0;
-FA_all(~isnan(FA_all)) = 1;
+% FA_all(isnan(FA_all)) = 0;
+% FA_all(~isnan(FA_all)) = 1;
 
 
 %% interpolate the orientation vectors to fill in the nan values (currently not implemented)
@@ -87,9 +90,9 @@ end
 
 %% Downsample to MRE resolution
 
-% remove empty rows of V_orientation_all_interp
-V_downsampled = V_orientation_all_interp(1:2:end, 1:2:end, 1:2:end, :);
-FA_downsampled = FA_all(1:2:end, 1:2:end, 1:2:end);
+% Downsample V_orientation_all_interp
+V_downsampled = V_orientation_all_interp(1:downsample_factor:end, 1:downsample_factor:end, 1:downsample_factor:end, :);
+FA_downsampled = FA_all(1:downsample_factor:end, 1:downsample_factor:end, 1:downsample_factor:end);
 
 % Replace NaN or empty values in V_downsampled with [0, 0, 1]
 for x = 1:size(V_downsampled, 1)
@@ -188,6 +191,47 @@ zlabel('Z');
 axis equal;
 grid on;
 
+%% Plot heatmap of FA in midslices
+
+% Define the mid slices for each plane
+mid_XY = round(size(FA_downsampled, 3) / 2);
+mid_XZ = round(size(FA_downsampled, 2) / 2);
+mid_YZ = round(size(FA_downsampled, 1) / 2);
+
+figure;
+
+% Plot FA heatmap for XY plane at mid slice
+subplot(2, 2, 1);
+imagesc(FA_downsampled(:, :, mid_XY+1));
+colormap(jet);
+colorbar;
+title('FA Heatmap - XY Plane');
+xlabel('Y');
+ylabel('X');
+axis equal;
+
+% Plot FA heatmap for XZ plane at mid slice
+subplot(2, 2, 2);
+imagesc(squeeze(FA_downsampled(:, mid_XZ+1, :)));
+colormap(jet);
+colorbar;
+title('FA Heatmap - XZ Plane');
+xlabel('Z');
+ylabel('X');
+axis equal;
+
+% Plot FA heatmap for YZ plane at mid slice
+subplot(2, 2, 3);
+imagesc(squeeze(FA_downsampled(mid_YZ+1, :, :))');
+colormap(jet);
+colorbar;
+title('FA Heatmap - YZ Plane');
+xlabel('Y');
+ylabel('Z');
+axis equal;
+
+sgtitle('FA Heatmaps for Mid Slices');
+
 
 %% Save the variables V_orientation_all_smooth and FA_all to a file named "DTI.mat"
 V1 = V_downsampled;
@@ -276,6 +320,7 @@ slices_to_plot = slice-7*vox_orientation_spacing:vox_orientation_spacing:slice+7
         FA_slice = FA_all(:,:,current_slice);
         FA_slice(isnan(FA_slice)) = 0; % Replace NaNs with 0 for scaling
         FA_sampled = FA_slice(1:fraction:end, 1:fraction:end);
+
         scale_factor = (2*fraction/4); %scale the size of arrows (can adjust if wanted)
         
         % Extract the sampled orientation vectors (remember, x and y are swapped in the orientation vectors)

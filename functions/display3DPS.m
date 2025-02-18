@@ -21,7 +21,7 @@ function display3DPS(powerSpectrum,V_1,V_2,V_3)
     % Check if V_1 exists and plot it
     if exist('V_1', 'var')
         hold on;
-        V_1
+        
             % Plot the most intense orientation vector
             quiver3(1, 1, 1, ...
                 V_1(1) * 10, V_1(2) * 10, V_1(3) * 10, ...
@@ -32,7 +32,7 @@ function display3DPS(powerSpectrum,V_1,V_2,V_3)
     % Check if V_2 exists and plot it
     if exist('V_2', 'var')
         hold on;
-        V_2
+        
         % Plot the second orientation vector
         quiver3(1, 1, 1, ...
             V_2(1) * 10, V_2(2) * 10, V_2(3) * 10, ...
