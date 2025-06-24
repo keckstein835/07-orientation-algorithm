@@ -1118,7 +1118,7 @@ function rotatedPowerSpectrum = rotatePowerSpectrum(powerSpectrum, orientationVe
     % theta = atan2d(orientationVector(2), orientationVector(1)); % Rotation about the z-axis
     rotatedPowerSpectrum = imrotate3(powerSpectrum, yaw, [0, 0, -1], 'crop'); % Rotate about z-axis (needs to be [0 0 -1] for z because imrotate3 is a bit ass-backwards)
     rotatedPowerSpectrum = imrotate3(rotatedPowerSpectrum, pitch, [1, 0, 0], 'crop'); % Rotate about y-axis (needs to be [0 -1 0] for y because imrotate3 is a bit ass-backwards)
-
+    rotatedPowerSpectrum = imrotate3(rotatedPowerSpectrum, roll, [1, 0, 0], 'crop'); % Rotate about x-axis
 
     % Rotate the power spectrum using imrotate3
 
