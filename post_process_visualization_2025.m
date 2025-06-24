@@ -2,7 +2,7 @@
 % Date Written: 2024-11-8
 % Author: Kevin Eckstein
 % Description: This script takes data from "Find_3D_lattice_fiber_dir_KNE.m" and plots the data, also saves a "DTI.mat" at the correct resolution for input to NLI.
-
+% this function also applies smoothing; so yoou can pull raw data from the output file and apply your own smoothing if desired.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function post_process_visualization(output_filename)
 % if nargin < 1
@@ -11,28 +11,34 @@
 % end
 
 % Now working in 2025_working; whew it feels good to have that all done!
-
+clear variables
+close all
 % 
 disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
 
 %% User settings:
-
-    % output_filename = 'FFTO3D_20240207scaled.mat';
+    % output_filename = 'FFTO3D 20241228xbox.mat'; % requires index flip (Why??? I don't know what happened)
+    % output_filename = 'FFTO3D_20240207scaled.mat'; 
     % output_filename = 'FFTO3D_20250204_arch.mat';
-    % output_filename = 'FFTO3D_20231227_DD.mat';
+    % output_filename = 'FFTO3D_20231227_DD.mat'; % requires index flip (Why??? I don't know what happened)
     % output_filename = 'FFTO3D_20241122_agar_XBOX.mat';
     % output_filename = 'FFTO3D_20241122xboxAgar.mat';
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
-    % output_filename = 'FFTO3D_20240204_arch_multilat.mat';
+    % output_filename = 'FFTO3D_20240204_arch_multilat.mat'; %use 28mmNH instead of this one
     % output_filename = 'FFTO3D_archMultiLat_28mmNH.mat';
-    output_filename = 'FFTO3D_output_FA_test2';
+    output_filename = 'FFTO3D_archMultiLat_28mmNH_FAadded.mat';
+    % output_filename = 'FFTO3D_output_FA_test2';
     % output_filename = 'test';
     
-    fraction = 6; % Sample every n-th point for the quiver plot
-    downsample_factor = 2; % Downsample factor for the imageStack and orientation vectors (going from your anatomical images, e.g. 120 x 120 x 72, to MRE images, 60 x 60 x 36 -KNE 2025-2-18)
+    % fraction = 6; % Sample every n-th point for the quiver plot
+    fraction = 3; %3 is usually good for 60x60x36 images.
 
+    downsample_factor = 2; % should be 2. Downsample factor for the imageStack and orientation vectors (going from your anatomical images, e.g. 120 x 120 x 72, to MRE images, 60 x 60 x 36 -KNE 2025-2-18)
+
+    do_index_flip = false; % Set to true if the indices need to be flipped to match the appearance of the T1 image on ITK-snap (check against ITK-snap after running code)
+    % do_index_flip = true;
 
 %% Load the data from the output file
 vars = {'V_orientation_all', 'dimX', 'dimY', 'dimZ', 'imageStack', 'FA_all','vox_orientation_spacing', 'cropWidth_voxels', 'voxel_size'};
@@ -49,11 +55,13 @@ voxel_size = data.voxel_size;
 % Convert V_orientation_all from cell array to 4D numeric array
 V_orientation_all_numeric = nan(dimX, dimY, dimZ, 3); % Initialize with NaNs
 
+
 for x = 1:dimX
     for y = 1:dimY
         for z = 1:dimZ
             if ~isempty(V_orientation_all{x, y, z})
                 V_orientation_all_numeric(x, y, z, :) = V_orientation_all{x, y, z};
+                
             end
         end
     end
@@ -67,7 +75,25 @@ end
 
 %% interpolate the orientation vectors to fill in the nan values (currently not implemented)
 % V_orientation_all_interp = fillmissing(V_orientation_all_numeric, 'movmean',vox_orientation_spacing);
+
+%% Switch indices here, if needed
 V_orientation_all_interp = V_orientation_all_numeric;
+
+if do_index_flip
+    disp('Switching indices to match appearance of T1 image on ITK-snap');
+    % Flip the indices 1 and 2 of imageStack and FA_all to match the itk-snap view when plotted by matlab
+    imageStack = permute(imageStack, [2, 1, 3]);
+    FA_all = permute(FA_all, [2, 1, 3]);
+
+    % Flip indices 1 and 2 of V_orientation_all_interp to match the itk-snap view when plotted by matlab
+    V_orientation_all_interp = permute(V_orientation_all_interp, [2, 1, 3, 4]);
+
+    % Swap the 1st and 2nd entries in the 4th dimension of V_orientation_all_interp (i.e. orientation vector)  
+    V_orientation_all_interp = V_orientation_all_interp(:,:,:,[2,1,3]);
+end
+
+
+
 
 
 %% Plot: first, find an appropriate (not empty) slice:
@@ -113,12 +139,12 @@ plot_multislice_XY(imageStack_downsampled, V_downsampled, FA_downsampled, round(
 
 
 % now smooth the downsampled vector field
-sigma = 1; % Standard deviation for Gaussian kernel
+sigma = 0.75; % Standard deviation for Gaussian kernel (1 works well. 0.75 works better)
 V_downsampled_smooth(:,:,:,1) = imgaussfilt3(V_downsampled(:,:,:,1), sigma);
 V_downsampled_smooth(:,:,:,2) = imgaussfilt3(V_downsampled(:,:,:,2), sigma);
 V_downsampled_smooth(:,:,:,3) = imgaussfilt3(V_downsampled(:,:,:,3), sigma);
 plot_multislice_XY(imageStack_downsampled, V_downsampled_smooth, FA_downsampled, round(slice/2), 1,fraction)
-disp('Two multi-slice figures: first befeore smoothing, second after smoothing')
+disp('Two multi-slice figures: first before smoothing, second after smoothing')
 
 %% Plot 3-view midplane slices with quivers
 figure;
@@ -202,7 +228,7 @@ figure;
 
 % Plot FA heatmap for XY plane at mid slice
 subplot(2, 2, 1);
-imagesc(FA_downsampled(:, :, mid_XY+1));
+imagesc(FA_downsampled(:, :, mid_XY-5));
 colormap(jet);
 colorbar;
 title('FA Heatmap - XY Plane');
@@ -245,9 +271,20 @@ FA = FA_downsampled;
     % V1 = V1(:,:,:,[2,1,3]);
 
 % as of 2025-2-6, I don't think these flips (above ~6 lines) are necessary so DONT do them.
+% as of 2025-2-25, flips were necessary but were done earlier in the script; so don't do them here.
 
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
+
+% Plot slice of imageStack
+figure;
+imagesc(imageStack(:, :, 32));
+colormap(gray);
+title('Slice 32 of imageStack');
+xlabel('X');
+ylabel('Y');
+axis equal;
+colorbar;
 
 % % Plot histogram of FA_all with 9 bins
 % figure;
@@ -316,7 +353,7 @@ slices_to_plot = slice-7*vox_orientation_spacing:vox_orientation_spacing:slice+7
         % Create a grid to sample only the specified fraction of the quivers
         [xGrid, yGrid] = meshgrid(1:fraction:size(imageStack,1), 1:fraction:size(imageStack,2));
         
-        % Scale quivers by their respective FA intensity
+        % Scale quivers by their respective FA intensity (edited to not use FA)
         FA_slice = FA_all(:,:,current_slice);
         FA_slice(isnan(FA_slice)) = 0; % Replace NaNs with 0 for scaling
         FA_sampled = FA_slice(1:fraction:end, 1:fraction:end);
