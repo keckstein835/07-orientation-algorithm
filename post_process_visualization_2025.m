@@ -22,13 +22,13 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     % output_filename = 'FFTO3D_20250204_arch.mat';
     % output_filename = 'FFTO3D_20231227_DD.mat'; % requires index flip (Why??? I don't know what happened)
     % output_filename = 'FFTO3D_20241122_agar_XBOX.mat';
-    output_filename = 'FFTO3D_20241122xboxAgar.mat';
+    % output_filename = 'FFTO3D_20241122xboxAgar.mat';
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_20240204_arch_multilat.mat'; %use 28mmNH instead of this one
     % output_filename = 'FFTO3D_archMultiLat_28mmNH.mat';
-    % output_filename = 'FFTO3D_archMultiLat_28mmNH_FAadded.mat';
+    output_filename = 'FFTO3D_archMultiLat_28mmNH_FAadded.mat';
     % output_filename = 'FFTO3D_output_FA_test2';
     % output_filename = '20250508_PC_syl_FFTO3D_output.mat';
     % output_filename = 'test';
