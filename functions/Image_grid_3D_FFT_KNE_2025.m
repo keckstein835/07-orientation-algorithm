@@ -37,7 +37,7 @@
 %    V_orientation - Most dominant orientation vector within subvolume
 %    R_basis - Rotation matrix for the orientation vector (including lateral symmetric directions)
 %    FA - a "strength of signal" measure that doesn't really work. (unfortunately FA is rather meaningless here, it doesn't accurately represent strength of signal)
-function [V_orientation, R_basis,FA] = Image_grid_3D_FFT_KNE(imageStack, voxel_size, periodicity_mm, do_primary_plots, do_secondary_plots);
+function [V_orientation, R_basis,FA] = Image_grid_3D_FFT_KNE_2025(imageStack, voxel_size, periodicity_mm, do_primary_plots, do_secondary_plots);
 
 addpath('functions'); % Add the functions folder to the path (not sure if this is needed)
 
@@ -200,7 +200,7 @@ end
 % end
 
 %% Solver #1: Direct FFT: Find the most prominent frequencies and their orientation vectors from the filtered power spectrum
-[V_1, lambda, mostProminentIndex, mostProminentFreq]  =  findMostProminentFrequency(filteredPowerSpectrum, Fx, Fy, Fz, voxel_size);
+[V1_solver1, lambda, mostProminentIndex, mostProminentFreq]  =  findMostProminentFrequency(filteredPowerSpectrum, Fx, Fy, Fz, voxel_size);
 % display the returned values, descripttion
 % disp('Orientation Unit Vector: ');
 % disp(V);
@@ -339,18 +339,20 @@ powerSpectrum_templatefit_input = powerSpectrum_highpass_90th; % Here, you can c
 
 %% Plot results so far
 
-V_2 = mostIntenseOrientation.frequency;
-roll_angle_V_2 = mostIntenseOrientation.orientation;
+V1_solver2 = mostIntenseOrientation.frequency;
+roll_angle_V1_solver2 = mostIntenseOrientation.orientation;
 
-normalized_V2_power = mostIntenseOrientation.normalized_intensity;
+% normalized_V1_solver2_power = mostIntenseOrientation.normalized_intensity;
+normalized_V1_solver2_power = mostIntenseOrientation.intensity; %this gets saved as FA
+
 if do_primary_plots
-    display3DPS(powerSpectrum_templatefit_input, V_1, V_2); %Plot both direct FFT (V) and template-fitting (V2) orientation vectors on the power spectrum
+    display3DPS(powerSpectrum_templatefit_input, V1_solver1, V1_solver2); %Plot both direct FFT (V) and template-fitting (V2) orientation vectors on the power spectrum
 end
-% Define the basis vectors using yaw, pitch, and roll_angle_V_2
+% Define the basis vectors using yaw, pitch, and roll_angle_V1_solver2
 
 yaw_rad = deg2rad(yaw);
 pitch_rad = -deg2rad(pitch); %Don't ask why this is negative, it just is (must be different conventions in matlab somehwere in here)
-roll_rad = deg2rad(roll_angle_V_2);
+roll_rad = deg2rad(roll_angle_V1_solver2);
 
 % Rotation matrix for yaw (Z-axis rotation)
 R_yaw = [cos(yaw_rad), -sin(yaw_rad), 0;
@@ -401,7 +403,7 @@ if do_primary_plots
     centerY = size(imageStack, 1) / 2;
 
     % Plot the unit vector (from direct FFT) in blue
-    quiver(centerX, centerY, V_1(2) * 10, V_1(1) * 10, 'b', 'LineWidth', 3, 'MaxHeadSize', 2);
+    quiver(centerX, centerY, V1_solver1(2) * 10, V1_solver1(1) * 10, 'b', 'LineWidth', 3, 'MaxHeadSize', 2);
     % Plot the most intense orientation vector in red
     quiver(centerX, centerY, mostIntenseOrientation.frequency(2) * 10, mostIntenseOrientation.frequency(1) * 10, 'r', 'LineWidth', 2, 'MaxHeadSize', 2);
 
@@ -410,6 +412,8 @@ if do_primary_plots
     ylabel('X');
     hold off;
 end
+
+
 
 
 %% Inverse FFT to obtain the spatial image (if desired)
@@ -422,10 +426,30 @@ end
 
 
 %% Conclusion: Define outputs
-V_orientation = V_2; % orientation vector from FFT and template fitting
-FA = normalized_V2_power; % fractional anisotropy
+V_orientation = V1_solver2; % orientation vector from FFT and template fitting
+FA = normalized_V1_solver2_power; % fractional anisotropy
 
 
+% % Plot FA in midplane slice
+% if do_primary_plots
+%     figure;
+%     midSlice_cropped = floor(size(imageStack, 3) / 2) + 1;
+%     imagesc(squeeze(imageStack(:, :, midSlice_cropped)));
+%     colormap(gray);
+%     title('Cropped Image with FA Overlaid');
+%     hold on;
+
+%     % Calculate the position of the FA in the cropped image
+%     centerX = size(imageStack, 2) / 2;
+%     centerY = size(imageStack, 1) / 2;
+
+%     % Plot the FA as a text label
+%     text(centerX, centerY, sprintf('FA: %.2f', FA), 'Color', 'red', 'FontSize', 12, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+
+%     xlabel('Y');
+%     ylabel('X');
+%     hold off;
+% end
 
 
 %% Archived code
@@ -475,7 +499,11 @@ FA = normalized_V2_power; % fractional anisotropy
     % disp('Code finished running!');
 
     if do_primary_plots
-        disp('V_1 is direct FFT solve, while V_2 is from template fitting; V_2 is what gets returned by function -KNE');
+        disp('V1_solver1: ');
+        disp(V1_solver1);
+        disp('V1_solver2: ');
+        disp(V1_solver2);
+        disp('solver1 is direct FFT solve; solver2 uses FFT and template fitting procedure -KNE');
         % Apply the formatting function to all figures with heatmaps
         figHandles = findall(0, 'Type', 'figure');
         for i = 1:length(figHandles)
@@ -485,6 +513,7 @@ FA = normalized_V2_power; % fractional anisotropy
             end
         end
     end
+
 
     % % Note to the user that matlab flips its x and y axes
     % disp('Note to user: Matlab runs first index down the left axis, then second left-to-right');
@@ -1014,6 +1043,45 @@ function mostIntenseOrientation = findMostIntenseOrientation(PowerSpectrum, rota
 % disp('Most Intense Orientation:');
 % disp(mostIntenseOrientation);
 
+% Finally, with the best candidate chosen, we will determine a fractional anisotropy value by looking at the other orthogonal directions... or not... not sure here. 
+% % First, we will define those orthoganol directions:
+%     yaw_temp = atan2d(mostIntenseOrientation.frequency(2), mostIntenseOrientation.frequency(1));
+%     pitch_temp = asind(mostIntenseOrientation.frequency(3));
+
+%     % V1_temp = mostIntenseOrientation.frequency;
+%     roll_angle_temp = mostIntenseOrientation.orientation;
+
+%     yaw_rad_temp = deg2rad(yaw_temp);
+%     pitch_rad_temp = -deg2rad(pitch_temp); %Don't ask why this is negative, it just is (must be different conventions in matlab somehwere in here)
+%     roll_rad_temp = deg2rad(roll_angle_temp);
+
+%     % normalized_V1_temp_power = mostIntenseOrientation.normalized_intensity;
+
+
+%     % Rotation matrix for yaw (Z-axis rotation)
+%     R_yaw = [cos(yaw_rad_temp), -sin(yaw_rad_temp), 0;
+%         sin(yaw_rad_temp), cos(yaw_rad_temp), 0;
+%         0, 0, 1];
+
+%     % Rotation matrix for pitch (Y-axis rotation)
+%     R_pitch = [cos(pitch_rad_temp), 0, sin(pitch_rad_temp);
+%         0, 1, 0;
+%         -sin(pitch_rad_temp), 0, cos(pitch_rad_temp)];
+
+%     % Rotation matrix for roll (X-axis rotation)
+%     R_roll = [1, 0, 0;
+%         0, cos(roll_rad_temp), -sin(roll_rad_temp);
+%         0, sin(roll_rad_temp), cos(roll_rad_temp)];
+
+%     % Combined rotation matrix
+%     R_basis_temp = R_yaw * R_pitch * R_roll;
+
+%     % Now, we will do template fits for the three orthoganol directions, with a square dot-grid after rotating PS with rotation matrix.
+%     % We will then calculate the fractional anisotropy as the sum of the squares of the normalized intensities of the three orthoganol directions.
+
+    
+
+
 end
     
 
@@ -1050,6 +1118,7 @@ function rotatedPowerSpectrum = rotatePowerSpectrum(powerSpectrum, orientationVe
     % theta = atan2d(orientationVector(2), orientationVector(1)); % Rotation about the z-axis
     rotatedPowerSpectrum = imrotate3(powerSpectrum, yaw, [0, 0, -1], 'crop'); % Rotate about z-axis (needs to be [0 0 -1] for z because imrotate3 is a bit ass-backwards)
     rotatedPowerSpectrum = imrotate3(rotatedPowerSpectrum, pitch, [1, 0, 0], 'crop'); % Rotate about y-axis (needs to be [0 -1 0] for y because imrotate3 is a bit ass-backwards)
+    rotatedPowerSpectrum = imrotate3(rotatedPowerSpectrum, roll, [1, 0, 0], 'crop'); % Rotate about x-axis
 
     % Rotate the power spectrum using imrotate3
 

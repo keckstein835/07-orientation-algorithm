@@ -13,6 +13,15 @@ addpath('functions'); % Add the functions folder to the path
 script_fullpath = mfilename('fullpath');
 [script_dir, ~, ~] = fileparts(script_fullpath);
 cd(script_dir);
+
+if isfile('recent_filepath.mat')
+    load('recent_filepath.mat')
+    %this has the most recent filepath, saved from previous run. Not required, but can be useful. 
+else
+    recent_file = 'empty';
+    recent_path = 'empty';
+end
+
 disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 disp('Current directory: ');
 disp(pwd);
@@ -23,12 +32,19 @@ disp('Step 1: Load image stack and mask');
 disp('Do you want to load a T1 image?')
 disp('- Enter 1 to select T1 (.dcm, .nii, .tif)')
 disp('- Enter 2 to use example preset filepath [default]')
+disp(['- Enter 3 to use most recent filepath,   which is: ' fullfile(recent_path, recent_file)])
+
 load_T1_image = input('');
 if load_T1_image == 1
     % Prompt user to select a T1 image file
     [file, path] = uigetfile({'*.*', 'All Files (*.*)'; '*.dcm', 'DICOM Files (*.dcm)'; '*.nii;*.nii.gz', 'NIfTI Files (*.nii, *.nii.gz)'; '*.tif;*.tiff', 'TIFF Files (*.tif, *.tiff)'}, ...
                              'Select T1 Image File', 'MultiSelect', 'off');
 
+elseif load_T1_image == 3
+    % Use the most recent file path
+    file = recent_file;
+    path = recent_path;
+    disp(['Using most recent file: ', fullfile(path, file)]);
 else
     % Use preset file-path "example" (can change for debugging and testing)
     % For the 2024-12-28 Xbox phantom:
@@ -46,6 +62,11 @@ else
     disp(['Using preset file: ', fullfile(path, file)]);
 end
 
+% Save the most recent file path for repeated use
+recent_file = file;
+recent_path = path;
+save('recent_filepath.mat', 'recent_file', 'recent_path');
+
 % Import image
 [~, ~, ext] = fileparts(file);
 if strcmpi(ext, '.nii') || strcmpi(ext, '.gz')
@@ -60,8 +81,15 @@ imageStack = squeeze(imageStack); % Remove singleton dimensions
 disp('Do you want to load a mask? (masks reduce computation time and can improve results near material boundaries)')
 disp('- Enter 1 to select mask (.dcm, .nii)')
 disp('- Enter 2 to use example mask ')
-disp('- Enter 3 to forgo mask')
-disp('- Enter 4 to automatically mask with OTSU split [default]')
+disp('- Enter 3 to use most recent mask, which is: ')
+if isfile('recent_maskpath.mat')
+    load('recent_maskpath.mat')
+    disp(fullfile(recent_maskpath, recent_mask))
+else
+    disp('No recent mask found')
+end
+disp('- Enter 4 to forgo mask')
+disp('- Enter 5 to automatically mask with OTSU split [default]')
 load_mask_option = input('');
 
 if load_mask_option == 1
@@ -69,11 +97,21 @@ if load_mask_option == 1
     [mask_file, mask_path] = uigetfile({'*.*', 'All Files (*.*)'; '*.nii;*.nii.gz', 'NIfTI Files (*.nii, *.nii.gz)'; '*.tif;*.tiff', 'TIFF Files (*.tif, *.tiff)'}, ...
                                         'Select Mask File', 'MultiSelect', 'off');
 
-elseif load_mask_option == 3
+elseif load_mask_option == 4
         % No mask will be used
         mask_file = '';
         mask_path = '';
         disp('No mask will be used.');
+elseif load_mask_option == 3
+        % Use the most recent mask file path
+        if isfile('recent_maskpath.mat')
+            load('recent_maskpath.mat')
+        else
+            disp('No recent mask found')
+        end
+        mask_file = recent_mask;
+        mask_path = recent_maskpath;
+        disp(['Using most recent mask file: ', fullfile(mask_path, mask_file)]);
 elseif load_mask_option == 2
         % Use preset mask file-path
         mask_file = 'Example_12282023_Xbox_T1_mask.nii.gz';
@@ -86,6 +124,11 @@ else
         disp('Automatically generating mask using OTSU split.');
 
 end
+
+% Save the most recent mask path for repeated use
+recent_mask = mask_file;
+recent_maskpath = mask_path;
+save('recent_maskpath.mat', 'recent_mask', 'recent_maskpath');
 
 % Check the file name and extension and read the mask accordingly
 if strcmp(mask_file, 'OTSU') %otsu split automatic mask

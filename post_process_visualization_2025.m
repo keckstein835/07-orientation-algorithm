@@ -2,7 +2,7 @@
 % Date Written: 2024-11-8
 % Author: Kevin Eckstein
 % Description: This script takes data from "Find_3D_lattice_fiber_dir_KNE.m" and plots the data, also saves a "DTI.mat" at the correct resolution for input to NLI.
-
+% this function also applies smoothing; so yoou can pull raw data from the output file and apply your own smoothing if desired.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function post_process_visualization(output_filename)
 % if nargin < 1
@@ -11,24 +11,35 @@
 % end
 
 % Now working in 2025_working; whew it feels good to have that all done!
-
+clear variables
+close all
 % 
 disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
 
-%% User settings:
-
-    % output_filename = 'FFTO3D_20240207scaled.mat';
-    % output_filename = 'FFTO3D 20241228xbox.mat';
-    % output_filename = 'FFTO3D_20231227_DD.mat';
+%% User settings (note: output_filename is actually the input to this code):
+    % output_filename = 'FFTO3D 20241228xbox.mat'; % requires index flip (Why??? I don't know what happened)
+    % output_filename = 'FFTO3D_20240207scaled.mat'; 
+    % output_filename = 'FFTO3D_20250204_arch.mat';
+    % output_filename = 'FFTO3D_20231227_DD.mat'; % requires index flip (Why??? I don't know what happened)
     % output_filename = 'FFTO3D_20241122_agar_XBOX.mat';
-    output_filename = 'FFTO3D_20241122xboxAgar.mat';
+    % output_filename = 'FFTO3D_20241122xboxAgar.mat';
     % output_filename = 'FFTO3D_20241214supersoft.mat';
     % output_filename = 'FFTO3D_TPUagar20241214';
     % output_filename = 'FFTO3D_TPUagar20241214';
+    % output_filename = 'FFTO3D_20240204_arch_multilat.mat'; %use 28mmNH instead of this one
+    % output_filename = 'FFTO3D_archMultiLat_28mmNH.mat';
+    output_filename = 'FFTO3D_archMultiLat_28mmNH_FAadded.mat';
+    % output_filename = 'FFTO3D_output_FA_test2';
+    % output_filename = '20250508_PC_syl_FFTO3D_output.mat';
     % output_filename = 'test';
     
-    fraction = 4; % Sample every n-th point for the quiver plot
+    % fraction = 6; % Sample every n-th point for the quiver plot
+    fraction = 3; %3 is usually good for 60x60x36 images.
 
+    downsample_factor = 2; % should be 2. Downsample factor for the imageStack and orientation vectors (going from your anatomical images, e.g. 120 x 120 x 72, to MRE images, 60 x 60 x 36 -KNE 2025-2-18)
+
+    do_index_flip = false; % Set to true if the indices need to be flipped to match the appearance of the T1 image on ITK-snap (check against ITK-snap after running code)
+    % do_index_flip = true;
 
 %% Load the data from the output file
 vars = {'V_orientation_all', 'dimX', 'dimY', 'dimZ', 'imageStack', 'FA_all','vox_orientation_spacing', 'cropWidth_voxels', 'voxel_size'};
@@ -45,11 +56,13 @@ voxel_size = data.voxel_size;
 % Convert V_orientation_all from cell array to 4D numeric array
 V_orientation_all_numeric = nan(dimX, dimY, dimZ, 3); % Initialize with NaNs
 
+
 for x = 1:dimX
     for y = 1:dimY
         for z = 1:dimZ
             if ~isempty(V_orientation_all{x, y, z})
                 V_orientation_all_numeric(x, y, z, :) = V_orientation_all{x, y, z};
+                
             end
         end
     end
@@ -57,13 +70,31 @@ end
 
 
 %% Get rid of FA_all because FA is not meaningful enough to be useful; set to for numbers that are not NaN
-FA_all(isnan(FA_all)) = 0;
-FA_all(~isnan(FA_all)) = 1;
+% FA_all(isnan(FA_all)) = 0;
+% FA_all(~isnan(FA_all)) = 1;
 
 
 %% interpolate the orientation vectors to fill in the nan values (currently not implemented)
 % V_orientation_all_interp = fillmissing(V_orientation_all_numeric, 'movmean',vox_orientation_spacing);
+
+%% Switch indices here, if needed
 V_orientation_all_interp = V_orientation_all_numeric;
+
+if do_index_flip
+    disp('Switching indices to match appearance of T1 image on ITK-snap');
+    % Flip the indices 1 and 2 of imageStack and FA_all to match the itk-snap view when plotted by matlab
+    imageStack = permute(imageStack, [2, 1, 3]);
+    FA_all = permute(FA_all, [2, 1, 3]);
+
+    % Flip indices 1 and 2 of V_orientation_all_interp to match the itk-snap view when plotted by matlab
+    V_orientation_all_interp = permute(V_orientation_all_interp, [2, 1, 3, 4]);
+
+    % Swap the 1st and 2nd entries in the 4th dimension of V_orientation_all_interp (i.e. orientation vector)  
+    V_orientation_all_interp = V_orientation_all_interp(:,:,:,[2,1,3]);
+end
+
+
+
 
 
 %% Plot: first, find an appropriate (not empty) slice:
@@ -86,9 +117,9 @@ end
 
 %% Downsample to MRE resolution
 
-% remove empty rows of V_orientation_all_interp
-V_downsampled = V_orientation_all_interp(1:2:end, 1:2:end, 1:2:end, :);
-FA_downsampled = FA_all(1:2:end, 1:2:end, 1:2:end);
+% Downsample V_orientation_all_interp
+V_downsampled = V_orientation_all_interp(1:downsample_factor:end, 1:downsample_factor:end, 1:downsample_factor:end, :);
+FA_downsampled = FA_all(1:downsample_factor:end, 1:downsample_factor:end, 1:downsample_factor:end);
 
 % Replace NaN or empty values in V_downsampled with [0, 0, 1]
 for x = 1:size(V_downsampled, 1)
@@ -109,12 +140,12 @@ plot_multislice_XY(imageStack_downsampled, V_downsampled, FA_downsampled, round(
 
 
 % now smooth the downsampled vector field
-sigma = 1; % Standard deviation for Gaussian kernel
+sigma = 0.75; % Standard deviation for Gaussian kernel (1 works well. 0.75 works better)
 V_downsampled_smooth(:,:,:,1) = imgaussfilt3(V_downsampled(:,:,:,1), sigma);
 V_downsampled_smooth(:,:,:,2) = imgaussfilt3(V_downsampled(:,:,:,2), sigma);
 V_downsampled_smooth(:,:,:,3) = imgaussfilt3(V_downsampled(:,:,:,3), sigma);
 plot_multislice_XY(imageStack_downsampled, V_downsampled_smooth, FA_downsampled, round(slice/2), 1,fraction)
-disp('Two multi-slice figures: first befeore smoothing, second after smoothing')
+disp('Two multi-slice figures: first before smoothing, second after smoothing')
 
 %% Plot 3-view midplane slices with quivers
 figure;
@@ -133,12 +164,12 @@ disp(['Note: fraction = ' num2str(fraction) ' for quiver plot']);
 subplot(2, 2, 1);
 imagesc(imageStack_downsampled(:, :, midplane_downsampled));
 colormap(gray);
-title('XY Plane');
+title('XY Plane (RL-PA on ITK-snap)');
 hold on;
 quiver(xGrid(:,:,1), yGrid(:,:,1), V_downsampled_smooth(1:fraction:end, 1:fraction:end, midplane_downsampled, 2), V_downsampled_smooth(1:fraction:end,1:fraction:end, midplane_downsampled, 1), 'r', 'LineWidth', 1, 'MaxHeadSize', 1, 'AutoScale', 'on', 'AutoScaleFactor', 0.5);
 hold off;
-xlabel('Y');
-ylabel('X');
+% xlabel('Y');
+% ylabel('X');
 % Make pixels square by adjusting the aspect ratio
 daspect([1 1 1]);
 
@@ -159,20 +190,22 @@ daspect([1 1 1]);
 midplane_YZ = round(size(imageStack_downsampled, 1) / 2);
 [yGrid_YZ, zGrid_YZ] = meshgrid(1:fraction:size(imageStack_downsampled, 2), 1:fraction:size(imageStack_downsampled, 3));
 subplot(2, 2, 3);
-imagesc(squeeze(imageStack_downsampled(midplane_YZ, :, :))');
+imagesc((squeeze(imageStack_downsampled(midplane_YZ, :, :))'));
 colormap(gray);
-title('YZ Plane');
+title('YZ Plane (RL-IS on ITK-snap)');
 hold on;
 quiver(yGrid_YZ, zGrid_YZ, squeeze(V_downsampled_smooth(midplane_YZ, 1:fraction:end, 1:fraction:end, 2))', squeeze(V_downsampled_smooth(midplane_YZ, 1:fraction:end, 1:fraction:end, 3))', 'r', 'LineWidth', 1, 'MaxHeadSize', 1, 'AutoScale', 'on', 'AutoScaleFactor', 0.5);
 hold off;
+set(gca, 'YDir', 'normal'); % Set Y axis to normal orientation for YZ plane
 % Make pixels square by adjusting the aspect ratio
+
 daspect([1 1 1]);
 
 % 3D Quiver plot of the downsampled and smoothed vector field (middle 1/4)
 figure;
 
-% Define the range for the middle 1/4 in the z-direction only
-zRange = round(size(V_downsampled_smooth, 3) / 4):round(3 * size(V_downsampled_smooth, 3) / 4);
+% Define the range for the middle 1/8 in the z-direction only
+zRange = round(size(V_downsampled_smooth, 3) / 8):round(3 * size(V_downsampled_smooth, 3) / 8);
 
 [xGrid3D, yGrid3D, zGrid3D] = meshgrid(1:fraction:size(V_downsampled_smooth, 1), 1:fraction:size(V_downsampled_smooth, 2), zRange(1):fraction:zRange(end));
 quiver3(xGrid3D, yGrid3D, zGrid3D, ...
@@ -180,27 +213,83 @@ quiver3(xGrid3D, yGrid3D, zGrid3D, ...
     V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 1), ...
     V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 3), ...
     'r');
-title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/4 in Z)');
-xlabel('X');
-ylabel('Y');
-zlabel('Z');
+title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/8 in Z)');
+xlabel('A-P');
+ylabel('R-L');
+zlabel('I-P');
 axis equal;
 grid on;
+
+%% Plot heatmap of FA in midslices
+
+% Define the mid slices for each plane
+mid_XY = round(size(FA_downsampled, 3) / 2);
+mid_XZ = round(size(FA_downsampled, 2) / 2);
+mid_YZ = round(size(FA_downsampled, 1) / 2);
+
+figure;
+
+% Plot FA heatmap for XY plane at mid slice
+subplot(2, 2, 1);
+imagesc(FA_downsampled(:, :, mid_XY-5));
+colormap(jet);
+colorbar;
+title('FA Heatmap - XY Plane');
+xlabel('Y');
+ylabel('X');
+axis equal;
+
+% Plot FA heatmap for XZ plane at mid slice
+subplot(2, 2, 2);
+imagesc(squeeze(FA_downsampled(:, mid_XZ+1, :)));
+colormap(jet);
+colorbar;
+title('FA Heatmap - XZ Plane');
+xlabel('Z');
+ylabel('X');
+axis equal;
+
+% Plot FA heatmap for YZ plane at mid slice
+subplot(2, 2, 3);
+imagesc(squeeze(FA_downsampled(mid_YZ+1, :, :))');
+colormap(jet);
+colorbar;
+title('FA Heatmap - YZ Plane');
+xlabel('Y');
+ylabel('Z');
+axis equal;
+
+sgtitle('FA Heatmaps for Mid Slices');
 
 
 %% Save the variables V_orientation_all_smooth and FA_all to a file named "DTI.mat"
 V1 = V_downsampled;
 FA = FA_downsampled;
 
-% Flip indices 1 and 2 of V1 and FA to match the NLI convention
-V1 = permute(V1, [2, 1, 3, 4]);
-FA = permute(FA, [2, 1, 3]);
+% Flip indices 1 and 2 of V1 and FA to match the NLI convention (if desired -- not sure if that's correct. KNE 2025-1-16)
+% V1 = permute(V1, [2, 1, 3, 4]);
+% FA = permute(FA, [2, 1, 3]);
 
-% Swap the 1st and 2nd entries in the 4th dimension of V1
-V1 = V1(:,:,:,[2,1,3]);
+% Swap the 1st and 2nd entries in the 4th dimension of V1 (i.e. orientation vector)  (if desired -- not sure if that's correct. KNE 2025-1-16)  
+    % V1 = V1(:,:,:,[2,1,3]);
+
+% as of 2025-2-6, I don't think these flips (above ~6 lines) are necessary so DONT do them.
+% as of 2025-2-25, flips were necessary but were done earlier in the script; so don't do them here.
 
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
+
+dispJ('Plotting slices as they appear on ITK-snap; if ITK-snap of T1 matches, and the overlayed vectors look right, then you are good to go! -KNE 2025-8-3');
+
+% Plot slice of imageStack
+figure;
+imagesc(imageStack(:, :, 32));
+colormap(gray);
+title('Slice 32 of imageStack, as it appears in ITK-snap');
+xlabel('X');
+ylabel('Y');
+axis equal;
+colorbar;
 
 % % Plot histogram of FA_all with 9 bins
 % figure;
@@ -269,10 +358,11 @@ slices_to_plot = slice-7*vox_orientation_spacing:vox_orientation_spacing:slice+7
         % Create a grid to sample only the specified fraction of the quivers
         [xGrid, yGrid] = meshgrid(1:fraction:size(imageStack,1), 1:fraction:size(imageStack,2));
         
-        % Scale quivers by their respective FA intensity
+        % Scale quivers by their respective FA intensity (edited to not use FA)
         FA_slice = FA_all(:,:,current_slice);
         FA_slice(isnan(FA_slice)) = 0; % Replace NaNs with 0 for scaling
         FA_sampled = FA_slice(1:fraction:end, 1:fraction:end);
+
         scale_factor = (2*fraction/4); %scale the size of arrows (can adjust if wanted)
         
         % Extract the sampled orientation vectors (remember, x and y are swapped in the orientation vectors)
