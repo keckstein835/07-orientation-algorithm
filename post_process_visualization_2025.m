@@ -164,12 +164,12 @@ disp(['Note: fraction = ' num2str(fraction) ' for quiver plot']);
 subplot(2, 2, 1);
 imagesc(imageStack_downsampled(:, :, midplane_downsampled));
 colormap(gray);
-title('XY Plane');
+title('XY Plane (RL-PA on ITK-snap)');
 hold on;
 quiver(xGrid(:,:,1), yGrid(:,:,1), V_downsampled_smooth(1:fraction:end, 1:fraction:end, midplane_downsampled, 2), V_downsampled_smooth(1:fraction:end,1:fraction:end, midplane_downsampled, 1), 'r', 'LineWidth', 1, 'MaxHeadSize', 1, 'AutoScale', 'on', 'AutoScaleFactor', 0.5);
 hold off;
-xlabel('Y');
-ylabel('X');
+% xlabel('Y');
+% ylabel('X');
 % Make pixels square by adjusting the aspect ratio
 daspect([1 1 1]);
 
@@ -190,20 +190,22 @@ daspect([1 1 1]);
 midplane_YZ = round(size(imageStack_downsampled, 1) / 2);
 [yGrid_YZ, zGrid_YZ] = meshgrid(1:fraction:size(imageStack_downsampled, 2), 1:fraction:size(imageStack_downsampled, 3));
 subplot(2, 2, 3);
-imagesc(squeeze(imageStack_downsampled(midplane_YZ, :, :))');
+imagesc((squeeze(imageStack_downsampled(midplane_YZ, :, :))'));
 colormap(gray);
-title('YZ Plane');
+title('YZ Plane (RL-IS on ITK-snap)');
 hold on;
 quiver(yGrid_YZ, zGrid_YZ, squeeze(V_downsampled_smooth(midplane_YZ, 1:fraction:end, 1:fraction:end, 2))', squeeze(V_downsampled_smooth(midplane_YZ, 1:fraction:end, 1:fraction:end, 3))', 'r', 'LineWidth', 1, 'MaxHeadSize', 1, 'AutoScale', 'on', 'AutoScaleFactor', 0.5);
 hold off;
+set(gca, 'YDir', 'normal'); % Set Y axis to normal orientation for YZ plane
 % Make pixels square by adjusting the aspect ratio
+
 daspect([1 1 1]);
 
 % 3D Quiver plot of the downsampled and smoothed vector field (middle 1/4)
 figure;
 
-% Define the range for the middle 1/4 in the z-direction only
-zRange = round(size(V_downsampled_smooth, 3) / 4):round(3 * size(V_downsampled_smooth, 3) / 4);
+% Define the range for the middle 1/8 in the z-direction only
+zRange = round(size(V_downsampled_smooth, 3) / 8):round(3 * size(V_downsampled_smooth, 3) / 8);
 
 [xGrid3D, yGrid3D, zGrid3D] = meshgrid(1:fraction:size(V_downsampled_smooth, 1), 1:fraction:size(V_downsampled_smooth, 2), zRange(1):fraction:zRange(end));
 quiver3(xGrid3D, yGrid3D, zGrid3D, ...
@@ -211,10 +213,10 @@ quiver3(xGrid3D, yGrid3D, zGrid3D, ...
     V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 1), ...
     V_downsampled_smooth(1:fraction:end, 1:fraction:end, zRange(1):fraction:zRange(end), 3), ...
     'r');
-title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/4 in Z)');
-xlabel('Y');
-ylabel('X');
-zlabel('Z');
+title('3D Quiver Plot of Downsampled and Smoothed Vector Field (Middle 1/8 in Z)');
+xlabel('A-P');
+ylabel('R-L');
+zlabel('I-P');
 axis equal;
 grid on;
 
@@ -277,11 +279,13 @@ FA = FA_downsampled;
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
 
+dispJ('Plotting slices as they appear on ITK-snap; if ITK-snap of T1 matches, and the overlayed vectors look right, then you are good to go! -KNE 2025-8-3');
+
 % Plot slice of imageStack
 figure;
 imagesc(imageStack(:, :, 32));
 colormap(gray);
-title('Slice 32 of imageStack');
+title('Slice 32 of imageStack, as it appears in ITK-snap');
 xlabel('X');
 ylabel('Y');
 axis equal;
