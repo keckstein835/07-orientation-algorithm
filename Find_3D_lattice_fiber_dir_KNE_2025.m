@@ -5,6 +5,10 @@
 
 clear all
 close all
+% Change directory to the location of this script
+script_fullpath = mfilename('fullpath');
+[script_dir, ~, ~] = fileparts(script_fullpath);
+cd(script_dir);
 addpath('functions'); % Add the functions folder to the path
 
 %% [1] Step 1: Load image stack and mask
@@ -161,6 +165,7 @@ else  %load mask (either from predefined example filepath or user-defined filepa
     [~, ~, ext] = fileparts(mask_file);
     if strcmpi(ext, '.nii') || strcmpi(ext, '.gz')
         mask = imbinarize(niftiread(fullfile(mask_path, mask_file)));
+        mask = permute(mask, [2, 1, 3]);
     elseif strcmpi(ext, '.tif') || strcmpi(ext, '.tiff')
         mask = imbinarize(imread(fullfile(mask_path, mask_file)));
     else
@@ -181,6 +186,32 @@ end
 if isempty(mask)
     error('No mask found.');
 end
+
+% Display 3-view (axial, sagittal, coronal) of masked image
+figure;
+midX = round(size(mask,1)/2);
+midY = round(size(mask,2)/2);
+midZ = round(size(mask,3)/2);
+
+maskedImageCheck = imageStack;
+maskedImageCheck(~mask) = 0;
+
+subplot(1,3,1);
+imagesc(squeeze(maskedImageCheck(:, :, midZ)));
+axis image; colormap gray;
+title('Axial (XY)');
+
+subplot(1,3,2);
+imagesc(squeeze(maskedImageCheck(:, midY, :))');
+axis image; colormap gray;
+title('Sagittal (XZ)');
+set(gca,'YDir','normal');
+
+subplot(1,3,3);
+imagesc(squeeze(maskedImageCheck(midX, :, :))');
+axis image; colormap gray;
+title('Coronal (YZ)');
+set(gca,'YDir','normal');
 
 
 % Gather some metadata about the image stack
