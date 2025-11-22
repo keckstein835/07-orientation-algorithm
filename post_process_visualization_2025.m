@@ -279,7 +279,7 @@ FA = FA_downsampled;
 save('DTI.mat', 'V1', 'FA');
 disp('Variables V1 and FA saved to DTI.mat');
 
-dispJ('Plotting slices as they appear on ITK-snap; if ITK-snap of T1 matches, and the overlayed vectors look right, then you are good to go! -KNE 2025-8-3');
+disp('Plotting slices as they appear on ITK-snap; if ITK-snap of T1 matches, and the overlayed vectors look right, then you are good to go! -KNE 2025-8-3');
 
 % Plot slice of imageStack
 figure;
