@@ -35,7 +35,7 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     % output_filename = 'FFTO3D_output_20251123_PCsyl_tp2.mat'; % Pretty good fit here, using the notch filter
     % output_filename = 'FFTO3D_xbox_notched.mat'; % Do not use; the notching actually hurts the analysis for the xbox phantom
     % output_filename = 'test';
-    
+    % output_filename = 'FFTO3D_output_xbox_example_unnotched_orig'
     % fraction = 6; % Sample every n-th point for the quiver plot
     fraction = 3; %3 is usually good for 60x60x36 images.
 
