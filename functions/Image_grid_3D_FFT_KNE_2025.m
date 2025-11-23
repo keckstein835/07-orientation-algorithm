@@ -960,7 +960,8 @@ function mostIntenseOrientation = findMostIntenseOrientation(PowerSpectrum, rota
     
     % Apply a notch filter to reduce artifacts on the axes' planes
     notch_width = 1; % Number of voxels to zero out around each axis plane (adjust as needed)
-    notch_attenuation = 0.5; % Fraction to retain (0 = full notch, 1 = no notch)
+    notch_attenuation = 1; % Fraction to retain (0 = full notch, 1 = no notch) Recommend 0.5 to apply notch; and i recommend that for the PC_sylgard scans from 20250508 -KNE
+    
 
     notch_mask = ones(size(PowerSpectrum));
 
