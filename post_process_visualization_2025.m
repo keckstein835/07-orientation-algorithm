@@ -30,16 +30,18 @@ disp('Running post_process_visualization_2025.m; KNE 2025 v1.0');
     % output_filename = 'FFTO3D_archMultiLat_28mmNH.mat';
     % output_filename = 'FFTO3D_archMultiLat_28mmNH_FAadded.mat';
     % output_filename = 'FFTO3D_output_FA_test2';
-    output_filename = '20250508_PC_syl_FFTO3D_output.mat';
+    % output_filename = '20250508_PC_syl_FFTO3D_output.mat'; % Not a good fit, due to artifacts along axis-planes
+    % output_filename = 'FFTO3D_output_PC_Syl_KNE_20251122_notched.mat'; % Pretty good fit here, using the notch filter to overcome artifacts
+    % output_filename = 'FFTO3D_output_20251123_PCsyl_tp2.mat'; % Pretty good fit here, using the notch filter
+    % output_filename = 'FFTO3D_xbox_notched.mat'; % Do not use; the notching actually hurts the analysis for the xbox phantom
     % output_filename = 'test';
     
     % fraction = 6; % Sample every n-th point for the quiver plot
     fraction = 3; %3 is usually good for 60x60x36 images.
 
-    downsample_factor = 2; % should be 2. Downsample factor for the imageStack and orientation vectors (going from your anatomical images, e.g. 120 x 120 x 72, to MRE images, 60 x 60 x 36 -KNE 2025-2-18)
+    downsample_factor = 1; % should be 1*. Downsampling will have already been taken care of, but if necessary, you can do it further here.
 
-    do_index_flip = false; % Set to true if the indices need to be flipped to match the appearance of the T1 image on ITK-snap (check against ITK-snap after running code)
-    % do_index_flip = true;
+    do_index_flip = false; % Recommend not changing this unless you're sure of it. Set to true if the indices need to be flipped to match the appearance of the T1 image on ITK-snap (check against ITK-snap after running code)
 
 %% Load the data from the output file
 vars = {'V_orientation_all', 'dimX', 'dimY', 'dimZ', 'imageStack', 'FA_all','vox_orientation_spacing', 'cropWidth_voxels', 'voxel_size'};
@@ -57,17 +59,20 @@ voxel_size = data.voxel_size;
 V_orientation_all_numeric = nan(dimX, dimY, dimZ, 3); % Initialize with NaNs
 
 
-for x = 1:dimX
-    for y = 1:dimY
-        for z = 1:dimZ
-            if ~isempty(V_orientation_all{x, y, z})
-                V_orientation_all_numeric(x, y, z, :) = V_orientation_all{x, y, z};
-                
+if ~iscell(V_orientation_all)
+    V_orientation_all_numeric = V_orientation_all; % already numeric
+else
+    for x = 1:dimX
+        for y = 1:dimY
+            for z = 1:dimZ
+                if ~isempty(V_orientation_all{x, y, z})
+                    V_orientation_all_numeric(x, y, z, :) = V_orientation_all{x, y, z};
+                    
+                end
             end
         end
     end
 end
-
 
 %% Get rid of FA_all because FA is not meaningful enough to be useful; set to for numbers that are not NaN
 % FA_all(isnan(FA_all)) = 0;

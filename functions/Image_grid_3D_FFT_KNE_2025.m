@@ -175,6 +175,26 @@ freqMask = createFrequencyMask(powerSpectrum, filter_max_feature_size, filter_mi
 % Apply the mask to the power spectrum
 filteredPowerSpectrum = powerSpectrum .* freqMask;
 
+% Apply a notch filter to reduce artifacts on the axes' planes
+notch_width = 1; % Number of voxels to zero out around each axis plane (adjust as needed)
+notch_attenuation = 1; % Fraction to retain (0 = full notch, 1 = no notch)
+
+notch_mask = ones(size(filteredPowerSpectrum));
+
+% X=0 plane
+center_x = round(size(filteredPowerSpectrum,1)/2)+1;
+notch_mask(center_x-notch_width:center_x+notch_width,:,:) = notch_attenuation;
+
+% Y=0 plane
+center_y = round(size(filteredPowerSpectrum,2)/2)+1;
+notch_mask(:,center_y-notch_width:center_y+notch_width,:) = notch_attenuation;
+
+% Z=0 plane
+center_z = round(size(filteredPowerSpectrum,3)/2)+1;
+notch_mask(:,:,center_z-notch_width:center_z+notch_width) = notch_attenuation;
+
+filteredPowerSpectrum = filteredPowerSpectrum .* notch_mask;
+
 % display_multi_slice_around_midplanes(powerSpectrum, color_axis_limit, Fx,Fy,Fz); % display the power spectrum
 if do_primary_plots
     display_multi_slice_around_midplanes(filteredPowerSpectrum, color_axis_limit, Fx,Fy,Fz); % display the filtered power spectrum
@@ -347,6 +367,7 @@ normalized_V1_solver2_power = mostIntenseOrientation.intensity; %this gets saved
 
 if do_primary_plots
     display3DPS(powerSpectrum_templatefit_input, V1_solver1, V1_solver2); %Plot both direct FFT (V) and template-fitting (V2) orientation vectors on the power spectrum
+    display3DPS(filteredPowerSpectrum, V1_solver1, V1_solver2); %Plot both direct FFT (V) and template-fitting (V2) orientation vectors on the filtered power spectrum
 end
 % Define the basis vectors using yaw, pitch, and roll_angle_V1_solver2
 
@@ -935,6 +956,29 @@ end
 
 function mostIntenseOrientation = findMostIntenseOrientation(PowerSpectrum, rotated_dot_grids, V, Fx, Fy, Fz, roll_increment_deg, do_plot)
     % Iterate through the most promising orientations, re-orient the computer's 'view' to each orientation, and fit template of dots (checking at 0-90 degree roll angles)
+
+    
+    % Apply a notch filter to reduce artifacts on the axes' planes
+    notch_width = 1; % Number of voxels to zero out around each axis plane (adjust as needed)
+    notch_attenuation = 0.5; % Fraction to retain (0 = full notch, 1 = no notch)
+
+    notch_mask = ones(size(PowerSpectrum));
+
+    % X=0 plane
+    center_x = round(size(PowerSpectrum,1)/2)+1;
+    notch_mask(center_x-notch_width:center_x+notch_width,:,:) = notch_attenuation;
+
+    % Y=0 plane
+    center_y = round(size(PowerSpectrum,2)/2)+1;
+    notch_mask(:,center_y-notch_width:center_y+notch_width,:) = notch_attenuation;
+
+    % Z=0 plane
+    center_z = round(size(PowerSpectrum,3)/2)+1;
+    notch_mask(:,:,center_z-notch_width:center_z+notch_width) = notch_attenuation;
+
+    PowerSpectrum = PowerSpectrum .* notch_mask;
+
+
 
     % Initialize variables to store the maximum intensity and corresponding orientation
     maxIntensity = -Inf;

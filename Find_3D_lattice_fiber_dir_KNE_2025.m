@@ -2,6 +2,7 @@
 % This main file is part of Kevin's new 3D Lattice Fiber Tracking Toolbox (Hey that's a cool name)
 % Written by Kevin Eckstein 2024-11-4
 % Edited by Kevin Eckstein 2024-12-27 to make it user-friendly
+% Edited by KNE 2025-11-22 to add parallel computing parfor to speed things up
 
 clear all
 close all
@@ -274,15 +275,23 @@ if run_mode == 1 % First, we will consider full volume analysis
     if isempty(vox_orientation_spacing) || vox_orientation_spacing <= 0 || mod(vox_orientation_spacing, 1) ~= 0
         vox_orientation_spacing = 2; %default
     end
-    disp(['Voxel spacing = ', num2str(vox_orientation_spacing), ' (i.e. down-sampled by a factor of ', num2str(vox_orientation_spacing)]);
+    disp(['Voxel spacing = ', num2str(vox_orientation_spacing), ' (i.e. down-sampled by a factor of ', num2str(vox_orientation_spacing), ')']);
 
     %% Image grid 3D FFT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     % Define the voxel spacing for orientation calculation
 
-    % Initialize a cell array to store orientation vectors for each voxel
-    V_orientation_all = cell(dimX, dimY, dimZ);
-    R_basis_all = cell(dimX, dimY, dimZ);
-    FA_all = zeros(dimX, dimY, dimZ);
+    % Calculate the number of voxels to analyze along each dimension based on spacing
+    x_indices = 1:vox_orientation_spacing:dimX;
+    y_indices = 1:vox_orientation_spacing:dimY;
+    z_indices = 1:vox_orientation_spacing:dimZ;
+    num_x = numel(x_indices);
+    num_y = numel(y_indices);
+    num_z = numel(z_indices);
+
+    % Preallocate arrays for orientation vectors and FA values
+    V_orientation_all = nan(num_x, num_y, num_z, 3); % 4D array for orientation vectors
+    R_basis_all = nan(num_x, num_y, num_z, 3, 3);    % 5D array for rotation matrices
+    FA_all = nan(num_x, num_y, num_z);
 
     % Display that the iteration routine is beginning
     disp('Beginning iteration routine through the entire volume...');
@@ -291,15 +300,33 @@ if run_mode == 1 % First, we will consider full volume analysis
     tic
     iters_completed = 0;
     % Iterate through the entire volume with the specified voxel spacing
-    for x = 1:vox_orientation_spacing:dimX
-        for y = 1:vox_orientation_spacing:dimY
-            for z = 1:vox_orientation_spacing:dimZ
+
+    % Check if Parallel Computing Toolbox is available and parfor can be used
+    parfor_available = false;
+    try
+        license_status = license('test', 'Distrib_Computing_Toolbox');
+        if license_status && exist('parfor', 'builtin')
+            parfor_available = true;
+        end
+    catch
+        parfor_available = false;
+    end
+    if ~parfor_available
+        error(['Parallel Computing Toolbox is not available. ', ...
+                'You can replace "parfor" with "for" to run without parallelization.']);
+    end
+
+    parfor index_x = 1:num_x %note: index_x is the downsampled index (e.g. if image was 120 x 120 x 64 and spacing was 2, index_x would go from 1 to 60)
+        x = index_x*vox_orientation_spacing-1;
+        for index_y = 1:num_y
+            y = index_y*vox_orientation_spacing - 1;
+            for index_z = 1:num_z
+                z = index_z*vox_orientation_spacing - 1;
                 % Define the crop center location for the current voxel
                 neighborhood_coordinate = [x, y, z];
                 % Check if the current coordinate is within the ROI mask
                 if mask(x, y, z)
                     disp(['Voxel coordinate: [', num2str(x), ', ', num2str(y), ', ', num2str(z), ']']);
-                    
                     
                     % Crop the image stack and the mask.
                     subImageStack = neighborhood_crop(imageStack, neighborhood_coordinate, cropWidth_voxels);
@@ -307,26 +334,23 @@ if run_mode == 1 % First, we will consider full volume analysis
 
                     % Then apply the mask, as a "grey mask" where masked regions are replaced with the average intensity
                     subImageStack = grey_mask(subImageStack, subImageMask);
-                        if ( sum(subImageMask(:)) < length(subImageMask(:))*0.10 || isnan(sum(subImageStack(:))) ) %if it's a mostly empty mask, just don't bother running algorithm
-                            disp('Masked image stack is >90% empty; empty vector returned.');
-                            % V_orientation = [1 0 0]; % return a default orientation vector
-                            V_orientation = []; % return a default orientation vector
-                            FA = 0; % return a default FA
-                        else
-                            % Calculate the orientation vector for the current voxel !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!                 
-                            [V_orientation, R_basis, FA] = Image_grid_3D_FFT_KNE_2025(subImageStack, voxel_size, periodicity_mm);
-                        end
+                    if ( sum(subImageMask(:)) < length(subImageMask(:))*0.10 || isnan(sum(subImageStack(:))) ) %if it's a mostly empty mask, just don't bother running algorithm
+                        disp('Masked image stack is >90% empty; empty vector returned.');
+                        V_orientation = [NaN NaN NaN]; % Use NaN for empty
+                        R_basis = nan(3,3);
+                        FA = 0;
+                    else
+                        % Calculate the orientation vector for the current voxel
+                        [V_orientation, R_basis, FA] = Image_grid_3D_FFT_KNE_2025(subImageStack, voxel_size, periodicity_mm);
+                        disp(['Orientation vector: [', num2str(V_orientation(1), '%.2f'), ', ', num2str(V_orientation(2), '%.2f'), ', ', num2str(V_orientation(3), '%.2f'), ']']);
+                    end
 
-                    % Store the orientation vector in the cell array
-                    V_orientation_all{x, y, z} = V_orientation;
-                    R_basis_all{x, y, z} = R_basis;
-                    % Store the FA value in a 3D array (although, as of Dec 2024, FA is useless)
-                    FA_all(x, y, z) = FA;
+                    % Store the orientation vector and FA value in the arrays
+                    V_orientation_all(index_x, index_y, index_z, :) = V_orientation;
+                    R_basis_all(index_x, index_y, index_z, :, :) = R_basis;
+                    FA_all(index_x, index_y, index_z) = FA;
                     iters_completed = iters_completed + 1;
-                % else
-                %     disp('Voxel outside of ROI mask. Empty cell');
                 end
-
             end
         end
         % Display percent progress after each x iteration
