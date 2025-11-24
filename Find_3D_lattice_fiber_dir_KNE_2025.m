@@ -31,7 +31,10 @@ disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 disp('Current directory: ');
 disp(pwd);
 disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
-
+disp('Note: parfor needs parallel computing toolbox, but you can change parfor to for in this script if you do not have it.');
+disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+disp('Note from KNE 2025-11-24: if analyzing PC-sylgard, go into Image_grid_3D_FFT_KNE_2025.m and ctrl-f for notch; add notch filter settings.');
+disp('If you run and find slightly inconsistent vector fitting, try this notch filter addition (its all coded, you just have to edit the notch settings in Image_grid_3D_FFT_KNE_2025.m).');
 disp('Step 1: Load image stack and mask');
 % Ask user if they want to load a T1 image
 disp('Do you want to load a T1 image?')
