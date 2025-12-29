@@ -30,7 +30,7 @@ q1b = quiver(xGrid,yGrid,-vy,-vx,'off');
 axis equal;
 % xlabel('X');
 % ylabel('Y');
-title(['V1 as seen on ITK-snap and vis5d profile (slice ', num2str(sliceIdx), ')']);
+title(['V1 as oriented like T1 viewed on ITK-snap and vis5d profile (slice ', num2str(sliceIdx), ')']);
 set(gca,'Ydir','reverse')
 hold off;
 
